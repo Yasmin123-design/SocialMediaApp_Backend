@@ -1,0 +1,54 @@
+CommentService/appsettings.json
+FeedService/appsettings.json
+FollowService/appsettings.json
+ImageService/appsettings.json
+LikeService/appsettings.json
+NotificationService/appsettings.json
+SearchService/appsettings.json
+UserService/appsettings.json
+LibraryShared/appsettings.json
+
+# Visual Studio / .NET
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build folders
+**/bin/
+**/obj/
+
+# Logs
+*.log
+**/logs/
+
+# Rider
+.idea/
+
+# Publish folder
+**/publish/
+
+# NuGet packages
+*.nupkg
+*.snupkg
+packages/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.DS_Store
+
+# Secret files
+appsettings.*.json
+secrets.json
+
+# Image uploads (example for ImageService / FeedService)
+**/wwwroot/uploads/
+
+# Migrations (optional, if you want to track migrations remove these)
+**/Migrations/
+
+# Cache
+**/cache/

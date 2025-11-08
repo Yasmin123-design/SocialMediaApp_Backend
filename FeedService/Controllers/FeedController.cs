@@ -1,0 +1,73 @@
+﻿using FeedService.Dtos;
+using FeedService.Services.FeedService;
+using LibraryShared.Services.UserClientService;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+
+namespace FeedService.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    [Authorize]
+    public class FeedController : ControllerBase
+    {
+        private readonly IFeedService _feedService;
+        private readonly IUserClientService _userClient;
+
+        public FeedController(IFeedService feedService , 
+            IUserClientService userClient
+            )
+        {
+            _feedService = feedService;
+            _userClient = userClient;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            var posts = await _feedService.GetAllAsync();
+            return Ok(posts);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> Get(int id)
+        {
+            var post = await _feedService.GetByIdAsync(id);
+            return Ok(post);
+        }
+
+        [HttpGet("userposts")]
+        public async Task<IActionResult> GetUserPosts()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var post = await _feedService.GetUserFeedAsync(userId);
+            return Ok(post);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Create([FromForm] CreateFeedPostDto dto)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Invalid token or user not found" });
+
+            var userExists = await _userClient.CheckUserExistsAsync(userId);
+            if (!userExists)
+                return BadRequest(new { message = "User does not exist" });
+
+            var created = await _feedService.CreateAsync(dto, userId);
+            return Ok(created);
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            await _feedService.DeleteAsync(id);
+            return Ok(new { message = "Post deleted successfully" });
+
+        }
+    }
+}
+
