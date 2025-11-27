@@ -9,5 +9,6 @@ namespace ImageService.Dtos
         [Required(ErrorMessage = "Image file is required.")]
         [DataType(DataType.Upload)]
         public IFormFile File { get; set; }
+        public string? Content { get; set; }
     }
 }

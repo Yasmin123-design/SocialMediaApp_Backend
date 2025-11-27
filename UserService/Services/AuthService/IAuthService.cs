@@ -1,13 +1,16 @@
-﻿using UserService.Dtos;
-using UserService.Models;
+﻿using LibraryShared.Dtos;
+using UserService.Dtos;
 
 namespace UserService.Services.AuthService
 {
     public interface IAuthService
     {
-        Task<string> RegisterAsync(RegisterDto model);
-        Task<string> LoginAsync(LoginDto model);
-        Task<ApplicationUser?> GetUserByIdAsync(string id);
+        Task<UserDto> RegisterAsync(RegisterDto model);
+        Task<UserDto> LoginAsync(LoginDto model);
+
+        Task<UserDto?> GetUserByIdAsync(string id);
+        Task<List<UserDto>> GetAllUsersAsync(); 
+
 
     }
 }

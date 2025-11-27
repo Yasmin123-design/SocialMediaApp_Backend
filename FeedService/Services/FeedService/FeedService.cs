@@ -1,7 +1,9 @@
 ﻿using FeedService.Data;
 using FeedService.Dtos;
+using FeedService.helpers;
 using FeedService.Models;
 using FeedService.Services.ImageClientService;
+using LibraryShared.Dtos;
 using LibraryShared.Services.RabbitMqPublisher;
 using LibraryShared.Services.UserClientService;
 using Microsoft.EntityFrameworkCore;
@@ -17,63 +19,68 @@ namespace FeedService.Services.FeedService
         private readonly IImageClientService _imageClient;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IRabbitMqPublisher _rabbitMqPublisher;
-        public FeedService(FeedDbContext context,
-            IWebHostEnvironment env ,
+
+        public FeedService(
+            FeedDbContext context,
+            IWebHostEnvironment env,
             IUserClientService userClientService,
             IImageClientService imageClientService,
             IHttpContextAccessor httpContextAccessor,
             IRabbitMqPublisher rabbitMqPublisher
-            )
+        )
         {
-            _imageClient = imageClientService;
-            _rabbitMqPublisher = rabbitMqPublisher;
             _context = context;
-            _userClientService = userClientService;
             _env = env;
+            _userClientService = userClientService;
+            _imageClient = imageClientService;
             _httpContextAccessor = httpContextAccessor;
+            _rabbitMqPublisher = rabbitMqPublisher;
+        }
+
+        private async Task<UserDto?> GetUserAsync(string userId)
+        {
+            if (!await _userClientService.CheckUserExistsAsync(userId))
+                return null;
+
+            return await _userClientService.GetUserByIdAsync(userId);
+        }
+
+        private async Task<ImageDto?> GetImageForPostAsync(int? imageId)
+        {
+            if (!imageId.HasValue)
+                return null;
+
+            var token = _httpContextAccessor.HttpContext?.Request.Headers["Authorization"]
+                .ToString()
+                .Replace("Bearer ", "");
+
+            return await _imageClient.GetImageByIdAsync(imageId.Value, token);
+        }
+
+        private async Task<bool> ValidateUserAsync(string userId)
+        {
+            if (string.IsNullOrEmpty(userId)) return false;
+            return await _userClientService.CheckUserExistsAsync(userId);
         }
 
         public async Task<IEnumerable<FeedPostWithUserDto>> GetUserFeedAsync(string userId)
         {
+            if (!await ValidateUserAsync(userId))
+                throw new KeyNotFoundException("User not found");
+
             var posts = await _context.FeedPosts
                 .Where(p => p.UserId == userId)
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
 
-            var user = await _userClientService.GetUserByIdAsync(userId);
+            var user = await GetUserAsync(userId);
 
             var result = new List<FeedPostWithUserDto>();
 
             foreach (var post in posts)
             {
-                string? originalImagePath = null;
-                string? filteredImagePath = null;
-
-                if (post.ImageId != null)
-                {
-                    var token = _httpContextAccessor.HttpContext?.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-                    var image = await _imageClient.GetImageByIdAsync(post.ImageId.Value,token);
-                    if (image != null)
-                    {
-                        originalImagePath = image.OriginalFilePath;
-                        filteredImagePath = image.FilteredFilePath;
-                    }
-                }
-
-                result.Add(new FeedPostWithUserDto
-                {
-                    Id = post.Id,
-                    ImageId = post.ImageId,
-                    Content = post.Content,
-                    MediaUrl = post.MediaUrl,
-                    PostType = post.PostType,
-                    CreatedAt = post.CreatedAt,
-                    UserId = user?.Id,
-                    UserName = user?.FullName,
-                    UserEmail = user?.Email,
-                    OriginalImagePath = originalImagePath,
-                    FilteredImagePath = filteredImagePath
-                });
+                var image = await GetImageForPostAsync(post.ImageId);
+                result.Add(FeedPostMapper.ToFeedDto(post, user, image));
             }
 
             return result;
@@ -84,30 +91,12 @@ namespace FeedService.Services.FeedService
             var post = await _context.FeedPosts.FindAsync(id)
                 ?? throw new KeyNotFoundException("Post not found");
 
-            var user = await _userClientService.GetUserByIdAsync(post.UserId!);
+            var user = await GetUserAsync(post.UserId!);
+            var image = await GetImageForPostAsync(post.ImageId);
 
-            ImageDto? image = null;
-            if (post.ImageId.HasValue)
-            {
-                var token = _httpContextAccessor.HttpContext?.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-                image = await _imageClient.GetImageByIdAsync(post.ImageId.Value, token);
-            }
-
-            return new FeedPostWithUserDto
-            {
-                Id = post.Id,
-                Content = post.Content,
-                MediaUrl = post.MediaUrl,
-                PostType = post.PostType,
-                CreatedAt = post.CreatedAt,
-                UserId = user?.Id,
-                UserName = user?.FullName,
-                UserEmail = user?.Email,
-                ImageId = post.ImageId,
-                OriginalImagePath = image?.OriginalFilePath,
-                FilteredImagePath = image?.FilteredFilePath
-            };
+            return FeedPostMapper.ToFeedDto(post, user, image);
         }
+
         public async Task<IEnumerable<FeedPostWithUserDto>> GetAllAsync()
         {
             var posts = await _context.FeedPosts
@@ -118,42 +107,27 @@ namespace FeedService.Services.FeedService
 
             foreach (var post in posts)
             {
-                var user = await _userClientService.GetUserByIdAsync(post.UserId!);
+                var user = await GetUserAsync(post.UserId!);
+                var image = await GetImageForPostAsync(post.ImageId);
 
-                ImageDto? image = null;
-                if (post.ImageId.HasValue)
-                {
-                    var token = _httpContextAccessor.HttpContext?.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-                    image = await _imageClient.GetImageByIdAsync(post.ImageId.Value, token);
-                }
-
-                result.Add(new FeedPostWithUserDto
-                {
-                    Id = post.Id,
-                    Content = post.Content,
-                    MediaUrl = post.MediaUrl,
-                    PostType = post.PostType,
-                    CreatedAt = post.CreatedAt,
-                    UserId = user?.Id,
-                    UserName = user?.FullName,
-                    UserEmail = user?.Email,
-                    ImageId = post.ImageId,
-                    OriginalImagePath = image?.OriginalFilePath,
-                    FilteredImagePath = image?.FilteredFilePath
-                });
+                result.Add(FeedPostMapper.ToFeedDto(post, user, image));
             }
 
             return result;
         }
 
-
-        public async Task<FeedPost> CreateAsync(CreateFeedPostDto dto, string userId)
+        public async Task<FeedPostWithUserDto> CreateAsync(CreateFeedPostDto dto, string userId)
         {
+            if (!await ValidateUserAsync(userId))
+                throw new KeyNotFoundException("User not found");
+
             string? filePath = null;
 
             if (dto.MediaFile != null)
             {
-                var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads");
+                var uploadsFolder = Path.Combine(_env.WebRootPath
+                    ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                    "uploads");
 
                 if (!Directory.Exists(uploadsFolder))
                     Directory.CreateDirectory(uploadsFolder);
@@ -162,9 +136,7 @@ namespace FeedService.Services.FeedService
                 var fullPath = Path.Combine(uploadsFolder, fileName);
 
                 using (var stream = new FileStream(fullPath, FileMode.Create))
-                {
                     await dto.MediaFile.CopyToAsync(stream);
-                }
 
                 filePath = $"/uploads/{fileName}";
             }
@@ -182,17 +154,18 @@ namespace FeedService.Services.FeedService
             _context.FeedPosts.Add(post);
             await _context.SaveChangesAsync();
 
-            var searchDoc = new SearchIndexDocument
+            var user = await GetUserAsync(userId);
+            var image = await GetImageForPostAsync(post.ImageId);
+
+            await _rabbitMqPublisher.PublishAsync(new SearchIndexDocument
             {
                 Id = post.Id.ToString(),
                 Type = "post",
                 Title = post.PostType,
                 Content = post.Content
-            };
+            }, "search_index_queue");
 
-            await _rabbitMqPublisher.PublishAsync(searchDoc, "search_index_queue");
-
-            return post;
+            return FeedPostMapper.ToFeedDto(post, user, image);
         }
 
         public async Task DeleteAsync(int id)
@@ -201,9 +174,8 @@ namespace FeedService.Services.FeedService
             if (post == null) return;
 
             if (post.ImageId != null)
-            {
                 await _imageClient.DeleteImageAsync(post.ImageId.Value);
-            }
+
             _context.FeedPosts.Remove(post);
             await _context.SaveChangesAsync();
 
@@ -213,7 +185,82 @@ namespace FeedService.Services.FeedService
                 Action = "Delete"
             }, "search_index_queue");
         }
+
+        public async Task<int> GetUserPostsCountAsync(string userId)
+        {
+            if (!await ValidateUserAsync(userId))
+                throw new KeyNotFoundException("User not found");
+
+            return await _context.FeedPosts.CountAsync(p => p.UserId == userId);
+        }
+
+        public async Task<(bool success, string? error)> SavePostAsync(string userId, int postId)
+        {
+            if (!await ValidateUserAsync(userId))
+                return (false, "User not found");
+
+            if (!await _context.FeedPosts.AnyAsync(p => p.Id == postId))
+                return (false, "Post not found");
+
+            var exists = await _context.SavedPosts
+                .AnyAsync(sp => sp.UserId == userId && sp.PostId == postId);
+
+            if (exists)
+                return (false, "Post already saved");
+
+            _context.SavedPosts.Add(new SavedPost
+            {
+                UserId = userId,
+                PostId = postId,
+                SavedAt = DateTime.UtcNow
+            });
+
+            await _context.SaveChangesAsync();
+            return (true, null);
+        }
+
+
+        public async Task<IEnumerable<FeedPostWithUserDto>> GetSavedPostsAsync(string userId)
+        {
+            if (!await ValidateUserAsync(userId))
+                throw new KeyNotFoundException("User not found");
+
+            var savedPosts = await _context.SavedPosts
+                .Where(sp => sp.UserId == userId)
+                .Include(sp => sp.Post)
+                .ToListAsync();
+
+            var result = new List<FeedPostWithUserDto>();
+
+            foreach (var sp in savedPosts)
+            {
+                var user = await GetUserAsync(sp.Post.UserId!);
+                var image = await GetImageForPostAsync(sp.Post.ImageId);
+
+                result.Add(FeedPostMapper.ToFeedDto(sp.Post, user, image));
+            }
+
+            return result;
+        }
+        public async Task<(bool success, string? error)> RemoveSavedPostAsync(string userId, int postId)
+        {
+            if (!await ValidateUserAsync(userId))
+                return (false, "User not found");
+
+            var savedPost = await _context.SavedPosts
+                .FirstOrDefaultAsync(sp => sp.UserId == userId && sp.PostId == postId);
+
+            if (savedPost == null)
+                return (false, "Post is not in saved list");
+
+            _context.SavedPosts.Remove(savedPost);
+            await _context.SaveChangesAsync();
+
+            return (true, null);
+        }
+
     }
 }
+
     
 

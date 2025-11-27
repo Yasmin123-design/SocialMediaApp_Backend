@@ -36,7 +36,7 @@ namespace ImageService.Services.ImageService
             Directory.CreateDirectory(_uploadsFolder);
         }
 
-        public async Task<string> SaveImageAsync(IFormFile file, string userId, CancellationToken ct = default)
+        public async Task<string> SaveImageAsync(IFormFile file, string userId,string content, CancellationToken ct = default)
         {
             if (!await _userClientService.CheckUserExistsAsync(userId))
                 throw new ArgumentException("Invalid UserId. User does not exist.");
@@ -64,13 +64,14 @@ namespace ImageService.Services.ImageService
                 UserId = userId,
                 FileName = fileName,
                 OriginalFilePath = relativePath,
-                UploadedAt = DateTime.UtcNow
+                UploadedAt = DateTime.UtcNow,
+                Content = content
             };
 
             _context.Images.Add(image);
             await _context.SaveChangesAsync(ct);
 
-            var success = await _feedClientService.CreatePostFromImageAsync(userId, image.Id, relativePath, ct);
+            var success = await _feedClientService.CreatePostFromImageAsync(userId, image.Id, relativePath,content, ct);
             if (!success)
                 throw new Exception("Failed to create feed post for uploaded image.");
 

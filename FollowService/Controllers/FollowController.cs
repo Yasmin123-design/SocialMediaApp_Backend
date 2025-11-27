@@ -42,24 +42,40 @@ namespace FollowService.Controllers
             return Ok(new { message = "Unfollowed successfully" });
         }
 
-        [HttpGet("followers")]
-        public async Task<IActionResult> GetFollowersCount()
+        [HttpGet("countfollowersuser/{userId}")]
+        public async Task<IActionResult> GetFollowersCount(string userId)
         {
-            var UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(UserId)) return Unauthorized();
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-            int count = await _followService.GetFollowersCountAsync(UserId);
+            int count = await _followService.GetFollowersCountAsync(userId);
             return Ok(count);
         }
 
-        [HttpGet("following")]
-        public async Task<IActionResult> GetFollowingCount()
+        [HttpGet("countfollowinguser/{userId}")]
+        public async Task<IActionResult> GetFollowingCount(string userId)
         {
-            var UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(UserId)) return Unauthorized();
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-            int count = await _followService.GetFollowingCountAsync(UserId);
+            int count = await _followService.GetFollowingCountAsync(userId);
             return Ok(count);
+        }
+
+        [HttpGet("followersusers/{userId}")]
+        public async Task<IActionResult> GetFollowersUsers(string userId)
+        {
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var users = await _followService.GetFollowersUsersAsync(userId);
+            return Ok(users);
+        }
+
+        [HttpGet("followingusers/{userId}")]
+        public async Task<IActionResult> GetFollowingUsers(string userId)
+        {
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var users = await _followService.GetFollowingUsersAsync(userId);
+            return Ok(users);
         }
     }
 }

@@ -21,6 +21,11 @@ namespace CommentService.Controllers
         [HttpGet("getcommentsofpost/{postId}")]
         public async Task<IActionResult> GetCommentsOfPost(int postId)
         {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Invalid token or user not found" });
+
             var comments = await _commentService.GetCommentsByPostIdAsync(postId);
             return Ok(comments);
         }
@@ -45,10 +50,14 @@ namespace CommentService.Controllers
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized(new { message = "Invalid token or user not found" });
 
-            var success = await _commentService.DeleteCommentAsync(id, userId);
-            if (!success) return NotFound();
-            return NoContent();
+            var deletedComment = await _commentService.DeleteCommentAsync(id, userId);
+
+            if (deletedComment == null)
+                return NotFound(new { message = "Comment not found or you are not the owner" });
+
+            return Ok(deletedComment);
         }
+
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateComment(int id, [FromBody] string newContent)
@@ -60,6 +69,13 @@ namespace CommentService.Controllers
             var updated = await _commentService.UpdateCommentAsync(id, userId, newContent);
             if (updated == null) return NotFound();
             return Ok(updated);
+        }
+
+        [HttpGet("noofcommentsofpost/{postId}")]
+        public async Task<IActionResult> GetNoOfCommentsOfPost(int postId)
+        {
+            var count = await _commentService.GetNoOfCommentsOfPostAsync(postId);
+            return Ok(new { postId, count });
         }
     }
 }

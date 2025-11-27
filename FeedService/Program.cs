@@ -6,6 +6,7 @@ using LibraryShared.Services.UserClientService;
 using Microsoft.EntityFrameworkCore;
 using LibraryShared.Extensions;
 using LibraryShared.Services.RabbitMqPublisher;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace FeedService
 {
@@ -39,6 +40,17 @@ namespace FeedService
             builder.Services.AddJwtAuthentication(builder.Configuration);
             builder.Services.AddMemoryCache();
 
+            builder.Services.Configure<FormOptions>(options =>
+            {
+                options.MultipartBodyLengthLimit = 2147483648; // 2GB
+            });
+
+            builder.Services.AddCors(opt =>
+            {
+                opt.AddPolicy("AllowAll", policy =>
+                    policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+            });
+
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())
@@ -46,11 +58,13 @@ namespace FeedService
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
+            app.UseCors("AllowAll");
 
             app.UseHttpsRedirection();
 
             app.UseAuthentication();
             app.UseAuthorization();
+            app.UseStaticFiles();
 
 
             app.MapControllers();

@@ -8,7 +8,8 @@ namespace FeedService.Data
         public FeedDbContext(DbContextOptions<FeedDbContext> options) : base(options)
         {
         }
-
         public DbSet<FeedPost> FeedPosts { get; set; }
+        public DbSet<SavedPost> SavedPosts { get; set; }
+
     }
 }

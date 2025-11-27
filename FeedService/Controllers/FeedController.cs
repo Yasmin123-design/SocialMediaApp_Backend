@@ -37,15 +37,16 @@ namespace FeedService.Controllers
             return Ok(post);
         }
 
-        [HttpGet("userposts")]
-        public async Task<IActionResult> GetUserPosts()
+        [HttpGet("userposts/{userId}")]
+        public async Task<IActionResult> GetUserPosts(string userId)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var post = await _feedService.GetUserFeedAsync(userId);
             return Ok(post);
         }
 
         [HttpPost]
+        [RequestSizeLimit(2147483648)] 
+        [RequestFormLimits(MultipartBodyLengthLimit = 2147483648)]
         public async Task<IActionResult> Create([FromForm] CreateFeedPostDto dto)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -68,6 +69,76 @@ namespace FeedService.Controllers
             return Ok(new { message = "Post deleted successfully" });
 
         }
+        [HttpGet("countpostsofuser/{userId}")]
+        public async Task<ActionResult<int>> GetUserPostsCount(string userId)
+        {
+
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Invalid token or user not found" });
+
+            var userExists = await _userClient.CheckUserExistsAsync(userId);
+            if (!userExists)
+                return BadRequest(new { message = "User does not exist" });
+
+            var count = await _feedService.GetUserPostsCountAsync(userId);
+            return Ok(count);
+        }
+        [HttpPost("save/{postId}")]
+        public async Task<IActionResult> SavePost(int postId)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Invalid token or user not found" });
+
+            var userExists = await _userClient.CheckUserExistsAsync(userId);
+            if (!userExists)
+                return BadRequest(new { message = "User does not exist" });
+
+            var result = await _feedService.SavePostAsync(userId, postId);
+
+            if (!result.success)
+                return NotFound(new { error = result.error });
+
+            return Ok(new { message = "Post saved successfully" });
+        }
+
+
+        [HttpGet("savedposts")]
+        public async Task<IActionResult> GetSavedPosts()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Invalid token or user not found" });
+
+            var userExists = await _userClient.CheckUserExistsAsync(userId);
+            if (!userExists)
+                return BadRequest(new { message = "User does not exist" });
+
+            var savedPosts = await _feedService.GetSavedPostsAsync(userId);
+            return Ok(savedPosts);
+        }
+        [HttpDelete("unsave/{postId}")]
+        public async Task<IActionResult> RemoveSavedPost(int postId)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Invalid token or user not found" });
+
+            var userExists = await _userClient.CheckUserExistsAsync(userId);
+            if (!userExists)
+                return BadRequest(new { message = "User does not exist" });
+
+            var result = await _feedService.RemoveSavedPostAsync(userId, postId);
+
+            if (!result.success)
+                return NotFound(new { error = result.error });
+
+            return Ok(new { message = "Post removed from saved successfully" });
+        }
+
     }
 }
 

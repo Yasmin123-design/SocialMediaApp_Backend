@@ -34,7 +34,7 @@ namespace ImageService.Controllers
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized();
 
-            var id = await _imageService.SaveImageAsync(dto.File, userId);
+            var id = await _imageService.SaveImageAsync(dto.File, userId ,dto.Content);
             return Ok(new { imageId = id });
         }
 

@@ -52,31 +52,36 @@ namespace LibraryShared.Services.FeedClientService
 
             return exists;
         }
-        public async Task<bool> CreatePostFromImageAsync(string userId, int imageId, string mediaUrl, CancellationToken ct = default)
+        public async Task<bool> CreatePostFromImageAsync(string userId, int imageId, string mediaUrl,string? content, CancellationToken ct = default)
         {
             string cacheKey = $"created_post_{userId}_{imageId}";
 
             if (_cache.TryGetValue(cacheKey, out bool cachedResult))
-            {
                 return cachedResult;
-            }
 
-            var newPost = new
+            var formData = new MultipartFormDataContent();
+            formData.Add(new StringContent(userId), "UserId");
+            formData.Add(new StringContent(imageId.ToString()), "ImageId");
+            formData.Add(new StringContent("image"), "PostType");
+            formData.Add(new StringContent(mediaUrl), "MediaUrl");
+            formData.Add(new StringContent(content?? ""), "Content");
+
+            var token = _httpContextAccessor.HttpContext?.Request.Headers["Authorization"].ToString();
+
+            var request = new HttpRequestMessage(HttpMethod.Post, "/api/feed")
             {
-                UserId = userId,
-                ImageId = imageId,
-                PostType = "image",
-                MediaUrl = mediaUrl,
-                Content = ""
+                Content = formData
             };
 
-            var content = new StringContent(
-                JsonSerializer.Serialize(newPost),
-                Encoding.UTF8,
-                "application/json"
-            );
+            if (!string.IsNullOrEmpty(token))
+            {
+                if (!token.StartsWith("Bearer "))
+                    token = "Bearer " + token;
 
-            var response = await _httpClient.PostAsync($"/api/feed", content, ct);
+                request.Headers.Authorization = AuthenticationHeaderValue.Parse(token);
+            }
+
+            var response = await _httpClient.SendAsync(request, ct);
 
             bool success = response.IsSuccessStatusCode;
 
@@ -84,6 +89,7 @@ namespace LibraryShared.Services.FeedClientService
 
             return success;
         }
+
 
         public async Task<PostDto?> GetPostByIdAsync(int postId)
         {

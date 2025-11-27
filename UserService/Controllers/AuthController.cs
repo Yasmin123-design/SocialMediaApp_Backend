@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using UserService.Dtos;
 using UserService.Services.AuthService;
 
@@ -20,15 +21,16 @@ namespace UserService.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
             try
             {
-                var result = await _authService.RegisterAsync(model);
-                return Ok(new { message = result });
+                var userDto = await _authService.RegisterAsync(model);
+                return Ok(userDto);
             }
             catch (Exception ex)
             {
                 return BadRequest(new { error = ex.Message });
-            }
+           }
         }
 
         [HttpPost("login")]
@@ -38,8 +40,8 @@ namespace UserService.Controllers
                 return BadRequest(ModelState);
             try
             {
-                var token = await _authService.LoginAsync(model);
-                return Ok(new { token });
+                var userDto = await _authService.LoginAsync(model);
+                return Ok(userDto); 
             }
             catch (Exception ex)
             {
@@ -50,16 +52,23 @@ namespace UserService.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(string id)
         {
-            var user = await _authService.GetUserByIdAsync(id);
-            if (user == null)
+            var userDto = await _authService.GetUserByIdAsync(id);
+            if (userDto == null)
                 return NotFound(new { Message = "User not found." });
 
-            return Ok(new
-            {
-                user.Id,
-                user.FullName,
-                user.Email
-            });
+            return Ok(userDto); 
+        }
+
+        [HttpGet("getallusers")]
+        [Authorize]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var users = await _authService.GetAllUsersAsync();
+
+            if (users == null || !users.Any())
+                return NotFound(new { Message = "No users found." });
+
+            return Ok(users);
         }
     }
 

@@ -1,4 +1,5 @@
-﻿using LibraryShared.Services.FeedClientService;
+﻿using LibraryShared.Dtos;
+using LibraryShared.Services.FeedClientService;
 using LibraryShared.Services.RabbitMqPublisher;
 using LibraryShared.Services.UserClientService;
 using LikeService.Data;
@@ -27,7 +28,12 @@ namespace LikeService.Services.LikeService
             _feedClient = feedClient;
             _rabbitMqPublisher = rabbitMqPublisher;
         }
-
+        public async Task<bool> CheckIfUserLikedPostAsync(int postId, string userId)
+        {
+            if (!await _userClient.CheckUserExistsAsync(userId))
+                throw new Exception("Invalid user ID");
+            return await _context.Likes.AnyAsync(l => l.PostId == postId && l.UserId == userId);
+        }
         public async Task<bool> AddLikeAsync(LikeDto dto)
         {
             if (!await _userClient.CheckUserExistsAsync(dto.UserId))
@@ -73,6 +79,30 @@ namespace LikeService.Services.LikeService
         public async Task<int> GetLikesCountAsync(int postId)
         {
             return await _context.Likes.CountAsync(l => l.PostId == postId);
+        }
+
+
+        public async Task<IEnumerable<UserDto>> GetUsersWhoLikedPostAsync(int postId)
+        {
+            var userIds = await _context.Likes
+                .Where(l => l.PostId == postId)
+                .Select(l => l.UserId)
+                .ToListAsync();
+
+            if (userIds == null || userIds.Count == 0)
+                return Enumerable.Empty<UserDto>();
+
+            var users = new List<UserDto>();
+
+            foreach (var id in userIds)
+            {
+                var user = await _userClient.GetUserByIdAsync(id);
+
+                if (user != null)
+                    users.Add(user);
+            }
+
+            return users;
         }
     }
 }

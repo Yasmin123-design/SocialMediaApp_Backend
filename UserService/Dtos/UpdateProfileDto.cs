@@ -1,13 +1,16 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using UserService.Models;
 
 namespace UserService.Dtos
 {
     public class UpdateProfileDto
     {
-        [StringLength(50, MinimumLength = 3, ErrorMessage = "Username must be between 3 and 50 characters")]
-        public string? Username { get; set; }
-
-        [EmailAddress(ErrorMessage = "Invalid email format")]
+        public string? FullName { get; set; }
         public string? Email { get; set; }
+        public string? PhoneNumber { get; set; }
+        public int? Age { get; set; }
+        public string? Address { get; set; }
+        public string? Position { get; set; }
+        public Gender? Gender { get; set; }
+        public MaritalStatus? MaritalStatus { get; set; }
     }
 }

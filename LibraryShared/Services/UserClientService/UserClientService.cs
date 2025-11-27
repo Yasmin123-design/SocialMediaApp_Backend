@@ -19,13 +19,6 @@ namespace LibraryShared.Services.UserClientService
         {
             string cacheKey = $"user_{userId}";
 
-            if (_cache.TryGetValue(cacheKey, out UserDto cachedUser))
-            {
-                Console.WriteLine($"[CACHE] User {userId} retrieved from cache ✅");
-                return cachedUser;
-            }
-
-            Console.WriteLine($"[HTTP] Fetching user {userId} from UserService 🌐");
 
             var response = await _httpClient.GetAsync($"/api/auth/{userId}");
 

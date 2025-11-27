@@ -52,6 +52,7 @@ namespace ImageService
 
             app.UseAuthorization();
 
+            app.UseStaticFiles();
 
             app.MapControllers();
 

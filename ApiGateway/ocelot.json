@@ -1,21 +1,27 @@
 {
   "Routes": [
     {
-        "DownstreamPathTemplate": "/api/profile/{everything}",
-        "DownstreamScheme": "http",
-        "DownstreamHostAndPorts": [
-          {
-            "Host": "localhost",
-            "Port": 5050
-          }
-        ],
-        "UpstreamPathTemplate": "/api/profile/{everything}",
-        "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
-        "AuthenticationOptions": {
-          "AuthenticationProviderKey": "Bearer",
-          "AllowedScopes": []
+      "DownstreamPathTemplate": "/api/profile/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5050
         }
+      ],
+      "UpstreamPathTemplate": "/api/profile/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
       },
+      "HttpHandlerOptions": {
+        "MaxRequestContentBufferSize": 2147483648,
+        "AllowAutoRedirect": false,
+        "UseCookieContainer": false
+      }
+    },
+
     {
       "DownstreamPathTemplate": "/api/auth/{everything}",
       "DownstreamScheme": "http",
@@ -32,9 +38,11 @@
         "Period": "1s",
         "PeriodTimespan": 1,
         "Limit": 10
+      },
+      "HttpHandlerOptions": {
+        "MaxRequestContentBufferSize": 2147483648
       }
     },
-
 
     {
       "DownstreamPathTemplate": "/api/feed/{everything}",
@@ -56,6 +64,11 @@
         "Period": "1m",
         "PeriodTimespan": 60,
         "Limit": 300
+      },
+      "HttpHandlerOptions": {
+        "MaxRequestContentBufferSize": 2147483648,
+        "AllowAutoRedirect": false,
+        "UseCookieContainer": false
       }
     },
 
@@ -73,6 +86,9 @@
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "HttpHandlerOptions": {
+        "MaxRequestContentBufferSize": 2147483648
       }
     },
 
@@ -90,6 +106,9 @@
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "HttpHandlerOptions": {
+        "MaxRequestContentBufferSize": 2147483648
       }
     },
 
@@ -107,6 +126,9 @@
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "HttpHandlerOptions": {
+        "MaxRequestContentBufferSize": 2147483648
       }
     },
 
@@ -124,6 +146,9 @@
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "HttpHandlerOptions": {
+        "MaxRequestContentBufferSize": 2147483648
       }
     },
 
@@ -141,6 +166,9 @@
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "HttpHandlerOptions": {
+        "MaxRequestContentBufferSize": 2147483648
       }
     },
 
@@ -154,11 +182,19 @@
         }
       ],
       "UpstreamPathTemplate": "/api/search/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST" ]
+      "UpstreamHttpMethod": [ "GET", "POST" ],
+      "HttpHandlerOptions": {
+        "MaxRequestContentBufferSize": 2147483648
+      }
     }
   ],
+
   "GlobalConfiguration": {
-    "BaseUrl": "http://localhost:5287"
+    "BaseUrl": "http://localhost:5287",
+    "HttpHandlerOptions": {
+      "MaxRequestContentBufferSize": 2147483648
+    }
   }
 }
+
 

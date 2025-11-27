@@ -1,4 +1,6 @@
-﻿namespace FeedService.Dtos
+﻿using LibraryShared.Dtos;
+
+namespace FeedService.Dtos
 {
     public class FeedPostWithUserDto
     {
@@ -11,7 +13,6 @@
         public string? PostType { get; set; }
         public DateTime CreatedAt { get; set; }
         public string? UserId { get; set; }
-        public string? UserEmail { get; set; }
-        public string? UserName { get; set; }
+        public UserDto User { get; set; }
     }
 }

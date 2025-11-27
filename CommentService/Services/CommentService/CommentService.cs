@@ -28,19 +28,42 @@ namespace CommentService.Services.CommentService
             _rabbitMqPublisher = rabbitMqPublisher;
         }
 
-        public async Task<IEnumerable<Comment>> GetCommentsByPostIdAsync(int postId)
+        private async Task<CommentResult> MapToCommentResultAsync(Comment comment)
+        {
+            var user = await _userClientService.GetUserByIdAsync(comment.UserId);
+            return new CommentResult
+            {
+                Id = comment.Id,
+                PostId = comment.PostId,
+                UserId = comment.UserId,
+                UserName = user?.FullName ?? "Unknown",
+                Content = comment.Content,
+                CreatedAt = comment.CreatedAt
+            };
+        }
+
+        public async Task<IEnumerable<CommentResult>> GetCommentsByPostIdAsync(int postId)
         {
             bool postExists = await _feedClientService.CheckFeedPostExistsAsync(postId);
             if (!postExists)
                 throw new Exception("Invalid post ID");
 
-            return await _context.Comments
+            var comments = await _context.Comments
                 .Where(c => c.PostId == postId)
                 .OrderByDescending(c => c.CreatedAt)
                 .ToListAsync();
+
+            var result = new List<CommentResult>();
+            foreach (var comment in comments)
+            {
+                var commentResult = await MapToCommentResultAsync(comment);
+                result.Add(commentResult);
+            }
+
+            return result;
         }
 
-        public async Task<Comment?> AddCommentAsync(CommentDto dto)
+        public async Task<CommentResult?> AddCommentAsync(CommentDto dto)
         {
             bool userExists = await _userClientService.CheckUserExistsAsync(dto.UserId);
             bool postExists = await _feedClientService.CheckFeedPostExistsAsync(dto.PostId);
@@ -52,11 +75,14 @@ namespace CommentService.Services.CommentService
             {
                 PostId = dto.PostId,
                 UserId = dto.UserId,
-                Content = dto.Content
+                Content = dto.Content,
+                CreatedAt = DateTime.UtcNow
             };
 
             _context.Comments.Add(comment);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(); 
+
+            var commentResult = await MapToCommentResultAsync(comment);
 
             var post = await _feedClientService.GetPostByIdAsync(dto.PostId);
             if (!string.IsNullOrEmpty(post.UserId))
@@ -77,35 +103,21 @@ namespace CommentService.Services.CommentService
                 Title = "Comment",
                 Content = comment.Content
             };
-
             await _rabbitMqPublisher.PublishAsync(searchDoc, "search_index_queue");
-            return comment;
+
+            return commentResult;
         }
 
-        public async Task<bool> DeleteCommentAsync(int id, string userId)
-        {
-            var comment = await _context.Comments.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
-            if (comment == null) return false;
-
-            _context.Comments.Remove(comment);
-            await _context.SaveChangesAsync();
-
-            await _rabbitMqPublisher.PublishAsync(new
-            {
-                Id = comment.Id.ToString(),
-                Action = "Delete"
-            }, "search_index_queue");
-
-            return true;
-        }
-
-        public async Task<Comment?> UpdateCommentAsync(int id, string userId, string newContent)
+        public async Task<CommentResult?> UpdateCommentAsync(int id, string userId, string newContent)
         {
             var comment = await _context.Comments.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
             if (comment == null) return null;
 
             comment.Content = newContent;
+            comment.CreatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+
+            var commentResult = await MapToCommentResultAsync(comment);
 
             var searchDoc = new SearchIndexDocument
             {
@@ -116,7 +128,31 @@ namespace CommentService.Services.CommentService
             };
             await _rabbitMqPublisher.PublishAsync(searchDoc, "search_index_queue");
 
-            return comment;
+            return commentResult;
+        }
+
+        public async Task<int> GetNoOfCommentsOfPostAsync(int postId)
+        {
+            return await _context.Comments
+                                 .Where(c => c.PostId == postId)
+                                 .CountAsync();
+        }
+        public async Task<CommentResult?> DeleteCommentAsync(int id, string userId)
+        {
+            var comment = await _context.Comments.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+            if (comment == null) return null;
+
+            _context.Comments.Remove(comment);
+            await _context.SaveChangesAsync();
+
+            await _rabbitMqPublisher.PublishAsync(new
+            {
+                Id = comment.Id.ToString(),
+                Action = "Delete"
+            }, "search_index_queue");
+
+            var commentResult = await MapToCommentResultAsync(comment);
+            return commentResult;
         }
     }
 }

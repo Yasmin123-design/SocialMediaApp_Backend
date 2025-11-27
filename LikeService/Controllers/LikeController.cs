@@ -48,6 +48,28 @@ namespace LikeService.Controllers
             int count = await _likeService.GetLikesCountAsync(postId);
             return Ok(count);
         }
+
+        [HttpGet("checkedlikestatus/{postId}")]
+        public async Task<IActionResult> CheckLikedStatusOfUser(int postId)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null) return Unauthorized();
+
+            bool isLiked = await _likeService.CheckIfUserLikedPostAsync(postId, userId);
+            return Ok(new { liked = isLiked });
+        }
+
+        [HttpGet("users/{postId}")]
+        public async Task<IActionResult> GetUsersWhoLiked(int postId)
+        {
+            var users = await _likeService.GetUsersWhoLikedPostAsync(postId);
+
+            if (users == null || !users.Any())
+                return Ok(new { message = "No users liked this post yet" });
+
+            return Ok(users);
+        }
+
     }
 }
 
