@@ -45,6 +45,11 @@ namespace LikeService.Services.LikeService
             var post = await _feedClient.GetPostByIdAsync(dto.PostId);
             if (post == null)
                 throw new Exception("Invalid post ID");
+
+            var user = await _userClient.GetUserByIdAsync(dto.UserId);
+            if (user == null)
+                return false;
+
             if (await _context.Likes.AnyAsync(l => l.UserId == dto.UserId && l.PostId == dto.PostId))
                 return false;
 
@@ -57,7 +62,8 @@ namespace LikeService.Services.LikeService
                 Event = "PostLiked",
                 PostId = dto.PostId,
                 LikerId = dto.UserId,
-                OwnerId = post.UserId
+                OwnerId = post.UserId,
+                OwnerName = user.FullName
             }, "notification_queue");
 
 
@@ -71,8 +77,23 @@ namespace LikeService.Services.LikeService
 
             if (like == null) return false;
 
+            var post = await _feedClient.GetPostByIdAsync(like.PostId);
+            if (post == null) return false;
+
+            var user = await _userClient.GetUserByIdAsync(post.UserId);
+            if (user == null) return false;
+
             _context.Likes.Remove(like);
             await _context.SaveChangesAsync();
+
+            await _rabbitMqPublisher.PublishAsync(new
+            {
+                Event = "UnPostLiked",
+                PostId = dto.PostId,
+                LikerId = dto.UserId,
+                OwnerId = post.UserId,
+                OwnerName = user.FullName
+            }, "notification_queue") ;
             return true;
         }
 

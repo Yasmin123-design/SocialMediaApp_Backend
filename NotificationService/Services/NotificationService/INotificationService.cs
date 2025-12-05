@@ -1,10 +1,13 @@
-﻿using NotificationService.Models;
+﻿using NotificationService.Dtos;
+using NotificationService.Models;
 
 namespace NotificationService.Services.NotificationService
 {
     public interface INotificationService
     {
         Task SendNotificationAsync(string userId, string message);
-        Task<IEnumerable<Notification>> GetNotificationsAsync(string userId);
+        Task<IEnumerable<NotificationResponseDto>> GetNotificationsAsync(string userId);
+        Task MarkAllAsReadAsync(string userId);
+        Task MarkAsReadAsync(int id, string userId);
     }
 }

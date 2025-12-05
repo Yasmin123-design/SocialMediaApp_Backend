@@ -139,6 +139,26 @@ namespace FeedService.Controllers
             return Ok(new { message = "Post removed from saved successfully" });
         }
 
+        [HttpPost("share/{postId}")]
+        public async Task<IActionResult> SharePost(int postId)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Invalid token or user not found" });
+
+            var userExists = await _userClient.CheckUserExistsAsync(userId);
+            if (!userExists)
+                return BadRequest(new { message = "User does not exist" });
+
+            var result = await _feedService.SharePostAsync(userId, postId);
+
+            if (!result.success)
+                return NotFound(new { error = result.error });
+
+            return Ok(new { message = "Post shared successfully" });
+        }
+
     }
 }
 

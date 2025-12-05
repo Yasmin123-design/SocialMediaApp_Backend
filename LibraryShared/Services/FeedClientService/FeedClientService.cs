@@ -1,9 +1,7 @@
 ﻿using LibraryShared.Dtos;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
 using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
 
 

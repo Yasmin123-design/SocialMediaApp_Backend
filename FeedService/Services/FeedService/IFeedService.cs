@@ -15,6 +15,8 @@ namespace FeedService.Services.FeedService
         Task<(bool success, string? error)> SavePostAsync(string userId, int postId);
         Task<IEnumerable<FeedPostWithUserDto>> GetSavedPostsAsync(string userId);
         Task<(bool success, string? error)> RemoveSavedPostAsync(string userId, int postId);
+        Task<(bool success, string error)> SharePostAsync(string userId, int postId);
+
 
     }
 }

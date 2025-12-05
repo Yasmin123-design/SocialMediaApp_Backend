@@ -71,6 +71,10 @@ namespace CommentService.Services.CommentService
             if (!userExists || !postExists)
                 throw new Exception("Invalid user or post ID");
 
+            var user = await _userClientService.GetUserByIdAsync(dto.UserId);
+            if (user == null)
+                return null;
+
             var comment = new Comment
             {
                 PostId = dto.PostId,
@@ -92,7 +96,8 @@ namespace CommentService.Services.CommentService
                     Event = "Comment",
                     PostId = dto.PostId,
                     CommenterId = dto.UserId,
-                    OwnerId = post.UserId
+                    OwnerId = post.UserId,
+                    OwnerName = user.FullName
                 }, "notification_queue");
             }
 
@@ -142,8 +147,22 @@ namespace CommentService.Services.CommentService
             var comment = await _context.Comments.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
             if (comment == null) return null;
 
+            var post = await _feedClientService.GetPostByIdAsync(comment.PostId);
+            if (post == null) return null;
+
+            var user = await _userClientService.GetUserByIdAsync(post.UserId);
+            if (user == null) return null;
             _context.Comments.Remove(comment);
             await _context.SaveChangesAsync();
+
+            await _rabbitMqPublisher.PublishAsync(new
+            {
+                Event = "UnComment",
+                PostId = comment.PostId,
+                CommenterId = userId,
+                OwnerId = post.UserId,
+                OwnerName = user.FullName
+            }, "notification_queue");
 
             await _rabbitMqPublisher.PublishAsync(new
             {

@@ -7,6 +7,7 @@ using LibraryShared.Dtos;
 using LibraryShared.Services.RabbitMqPublisher;
 using LibraryShared.Services.UserClientService;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using SearchService.Models;
 
 namespace FeedService.Services.FeedService
@@ -254,6 +255,28 @@ namespace FeedService.Services.FeedService
                 return (false, "Post is not in saved list");
 
             _context.SavedPosts.Remove(savedPost);
+            await _context.SaveChangesAsync();
+
+            return (true, null);
+        }
+
+        public async Task<(bool success, string error)> SharePostAsync(string userId, int postId)
+        {
+            var post = await _context.FeedPosts.FindAsync(postId);
+            if (post == null)
+                return (false, "Post not found");
+
+            var sharedPost = new FeedPost
+            {
+                Content = post.Content,
+                PostType = post.PostType,
+                MediaUrl = post.MediaUrl,
+                ImageId = post.ImageId,
+                UserId = userId,
+                CreatedAt = DateTime.Now
+            };
+
+            _context.FeedPosts.Add(sharedPost);
             await _context.SaveChangesAsync();
 
             return (true, null);

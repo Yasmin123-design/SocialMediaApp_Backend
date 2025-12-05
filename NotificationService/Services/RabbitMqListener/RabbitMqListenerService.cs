@@ -60,10 +60,13 @@ namespace NotificationService.Services.RabbitMqListener
 
                     string? notifyMessage = data.Event switch
                     {
-                        "PostLiked" => $"Your post (ID: {data.PostId}) was liked by user {data.LikerId}.",
-                        "Follow" => $"User {data.FollowerId} started following you.",
-                        "Unfollow" => $"User {data.FollowerId} unfollowed you.",
-                        "Comment" => $"User {data.CommenterId} commented on your post (ID: {data.PostId}).",
+                        "PostLiked" => $"Your post was liked by user {data.OwnerName}.",
+                        "UnPostLiked" => $"Your post  was unliked by user {data.OwnerName}.",
+                        "Follow" => $"User {data.OwnerName} started following you.",
+                        "Unfollow" => $"User {data.OwnerName} unfollowed you.",
+                        "Comment" => $"User {data.OwnerName} commented on your post.",
+                        "UnComment" => $"User {data.OwnerName} remove comment on your post.",
+
                         _ => null
                     };
 
@@ -116,6 +119,7 @@ namespace NotificationService.Services.RabbitMqListener
             public int? PostId { get; set; }
             public string? LikerId { get; set; }
             public string? OwnerId { get; set; }
+            public string? OwnerName { get; set; }
             public string? FollowerId { get; set; }
             public string? FollowingId { get; set; }
             public string? CommenterId { get; set; }
