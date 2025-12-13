@@ -281,6 +281,23 @@ namespace FeedService.Services.FeedService
 
             return (true, null);
         }
+        public async Task<(bool success, string? error)> UpdateAsync(int postId, UpdateFeedPostDto dto, string userId)
+        {
+            var post = await _context.FeedPosts.FindAsync(postId);
+
+            if (post == null)
+                return (false, "Post not found");
+
+            if (post.UserId != userId)
+                return (false, "You are not allowed to edit this post");
+
+            post.Content = dto.Content ?? post.Content;
+            post.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return (true, null);
+        }
 
     }
 }

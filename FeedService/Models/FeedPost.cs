@@ -9,6 +9,8 @@
         public int? ImageId { get; set; }
         public string PostType { get; set; } = "text"; 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; } 
+
     }
 }
 

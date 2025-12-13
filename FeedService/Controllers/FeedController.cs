@@ -62,6 +62,25 @@ namespace FeedService.Controllers
             return Ok(created);
         }
 
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateFeedPostDto dto)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Invalid token or user not found" });
+
+            var userExists = await _userClient.CheckUserExistsAsync(userId);
+            if (!userExists)
+                return BadRequest(new { message = "User does not exist" });
+            var updated = await _feedService.UpdateAsync(id, dto, userId);
+
+            if (!updated.success)
+                return BadRequest(new { message = updated.error });
+
+            return Ok(new { message = "Post updated successfully" });
+        }
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
